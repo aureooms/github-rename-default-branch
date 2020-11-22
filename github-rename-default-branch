@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+shopt -s nullglob
+
+from="${2:-master}"
+to="${3:-main}"
+
+cd "$1"
+
+if git show-ref --verify --quiet "refs/heads/${to}" ; then
+	exit 0
+fi
+
+if git show-ref --verify --quiet "refs/heads/${from}" ; then
+	git branch -m "${from}" "${to}"
+	git push -u origin "${to}"
+	gh api --method PATCH /repos/:owner/:repo --field default_branch="${to}"
+	git push origin --delete "${from}"
+	sed "s:/${from}:/${to}:g" -i README.md doc/manual/*.md
+	git add README.md doc/manual/*.md
+	git commit -m ":unamused: chore(README): Link to ${to} branch." && git push
+	exit 0
+fi
+
+exit 1
